@@ -167,6 +167,30 @@ services:
     networks:
       - vero
 
+  # ---------------------
+  # qdrant vector database for AI knowledge store
+  # ---------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: always
+    container_name: qdrant
+    env_file:
+      - ${QDRANT_ENV_FILE} # qdrant Configuration
+    ports:
+      - 6333:6333
+      - 6334:6334
+    expose:
+      - 6333 # For the HTTP API, for the Monitoring health and metrics endpoints
+      - 6334 # For the gRPC API
+    # - 6335 #  For Distributed deployment
+    networks:
+      - vero # Shared network for inter-service communication
+    configs:
+      - source: qdrant_config
+        target: /qdrant/config/production.yaml
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+
   # ────────────────────────────────
   # NGINX reverse proxy ´
   # ────────────────────────────────
@@ -181,7 +205,7 @@ services:
       - ./nginx/logs:/var/log/nginx
       - ./nginx/certs:/etc/nginx/certs:rw
       - ./nginx/vhost.d:/etc/nginx/vhost.d
-      - ./nginx/html:/usr/share/nginx/html # ✅ Corrected path
+      - ./nginx/html:/usr/share/nginx/html
     networks:
       - vero
     labels:
@@ -226,3 +250,8 @@ volumes:
 networks:
   vero:
     driver: bridge # Bridge network for cross-service communication
+
+configs:
+  qdrant_config:
+    content: |
+      log_level: INFO
