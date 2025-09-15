@@ -214,6 +214,20 @@ services:
     volumes:
       - ./qdrant_data:/qdrant/storage
 
+  # ---------------------
+  # MailHog (Local SMTP sink + Web UI)
+  # ---------------------
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    platform: linux/amd64
+    restart: unless-stopped
+    networks:
+      - vero
+    ports:
+      - "8025:8025" # Web UI (linux/amd64)
+      - "1025:1025" # SMTP (optional; remove if only containers use it)
+
 # ---------------------
 # Volumes for Persistence
 # ---------------------

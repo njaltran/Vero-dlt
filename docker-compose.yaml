@@ -234,6 +234,19 @@ services:
     networks:
       - vero
 
+  # ---------------------
+  # MailHog (Local SMTP sink + Web UI)
+  # ---------------------
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: mailhog
+    restart: unless-stopped
+    networks:
+      - vero
+    ports:
+      - "8025:8025" # Web UI (http://localhost:8025)
+      - "1025:1025" # SMTP (optional; remove if only containers use it)
+
 # ---------------------
 # Volumes for Persistence
 # ---------------------
