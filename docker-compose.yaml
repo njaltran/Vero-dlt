@@ -68,7 +68,7 @@ services:
     ports:
       - "9000:9000" # MCP Server API port for SSE and AI middleware
     env_file:
-      - ${MCP_ENV_FILE}
+      - ${MCP_ENV_FILE} # Dev environment config (includes secret tokens, etc.)
     command: # Command-line args passed to the MCP process
       - --endpoint
       - ${MCP_ENDPOINT} # URL of the Cube.js backend
@@ -211,8 +211,8 @@ services:
     labels:
       - com.github.nginx-proxy.nginx
     depends_on:
-      cubejs:
-        condition: service_healthy
+      # cubejs:
+      #   condition: service_healthy
       n8n:
         condition: service_healthy
 
@@ -226,9 +226,7 @@ services:
       - NGINX_PROXY_CONTAINER=nginx
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./nginx/logs:/var/log/nginx
       - ./nginx/certs:/etc/nginx/certs:rw
-      - ./nginx/acme:/etc/acme.sh:rw
       - ./nginx/vhost.d:/etc/nginx/vhost.d
       - ./nginx/html:/usr/share/nginx/html
     networks:
