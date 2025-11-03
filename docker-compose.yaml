@@ -210,8 +210,8 @@ services:
     depends_on:
       # cubejs:
       #   condition: service_healthy
-      n8n:
-        condition: service_healthy
+      #n8n:
+      # condition: service_healthy
 
   letsencrypt:
     image: nginxproxy/acme-companion
