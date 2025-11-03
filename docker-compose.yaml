@@ -207,11 +207,11 @@ services:
       - vero
     labels:
       - com.github.nginx-proxy.nginx
-    depends_on:
-      # cubejs:
-      #   condition: service_healthy
-      #n8n:
-      # condition: service_healthy
+    # depends_on:
+    # cubejs:
+    #   condition: service_healthy
+    #n8n:
+    # condition: service_healthy
 
   letsencrypt:
     image: nginxproxy/acme-companion
