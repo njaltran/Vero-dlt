@@ -1,7 +1,7 @@
 """Query builder for BSL semantic model queries.
 
 Translates query requests (measures, dimensions, filters, time dimensions)
-into executable BSL/Ibis queries.
+into executable BSL/Ibis queries using SemanticModel.query().
 """
 
 from boring_semantic_layer import SemanticModel
@@ -43,50 +43,15 @@ class QueryRequest(BaseModel):
     )
 
 
-def build_single_filter(dim_obj, op: str, value: str):
-    """Build an Ibis filter predicate from a dimension object, operator, and value."""
-    if op == "=":
-        return lambda t, d=dim_obj, v=value: d(t) == v
-    elif op == "!=":
-        return lambda t, d=dim_obj, v=value: d(t) != v
-    elif op == ">":
-        return lambda t, d=dim_obj, v=value: d(t) > v
-    elif op == ">=":
-        return lambda t, d=dim_obj, v=value: d(t) >= v
-    elif op == "<":
-        return lambda t, d=dim_obj, v=value: d(t) < v
-    elif op == "<=":
-        return lambda t, d=dim_obj, v=value: d(t) <= v
-    elif op == "contains":
-        return lambda t, d=dim_obj, v=value: d(t).contains(v)
-    else:
-        raise ValueError(f"Unsupported operator: {op}")
-
-
 def build_semantic_query(model: SemanticModel, query_request: QueryRequest):
     """Build a BSL semantic query from a QueryRequest.
 
-    Returns an unexecuted query object that can be .execute()'d to get a DataFrame.
+    Uses the SemanticModel.query() API which handles dimensions, measures,
+    filters, ordering, and limits natively.
+
+    Returns an executable result (call .execute() or .to_pandas() on it).
     """
-    query = model
-
-    # Apply filters
-    for f in query_request.filters:
-        dim_name = f.field.split(".")[-1] if "." in f.field else f.field
-        if dim_name in model.dimensions:
-            dim_obj = model.dimensions[dim_name]
-            filter_fn = build_single_filter(dim_obj, f.operator, f.value)
-            query = query.filter(filter_fn)
-
-    # Apply time dimension filters as date range filters
-    for td in query_request.timeDimensions:
-        dim_name = td.dimension.split(".")[-1] if "." in td.dimension else td.dimension
-        if dim_name in model.dimensions and isinstance(td.dateRange, list) and len(td.dateRange) == 2:
-            dim_obj = model.dimensions[dim_name]
-            query = query.filter(lambda t, d=dim_obj, dr=td.dateRange: d(t) >= dr[0])
-            query = query.filter(lambda t, d=dim_obj, dr=td.dateRange: d(t) <= dr[1])
-
-    # Resolve dimension and measure names
+    # Resolve dimension and measure names (strip table prefix if present)
     selected_dims = []
     for d in query_request.dimensions:
         name = d.split(".")[-1] if "." in d else d
@@ -99,15 +64,20 @@ def build_semantic_query(model: SemanticModel, query_request: QueryRequest):
         if name in model.measures:
             selected_measures.append(name)
 
-    # Build aggregation query
-    if selected_measures and selected_dims:
-        query = query.select(
-            dimensions=selected_dims,
-            measures=selected_measures,
-        )
-    elif selected_measures:
-        query = query.select(measures=selected_measures)
-    elif selected_dims:
-        query = query.select(dimensions=selected_dims)
+    # Build order_by tuples
+    order_by = None
+    if query_request.order:
+        order_by = [
+            (k.split(".")[-1] if "." in k else k, v)
+            for k, v in query_request.order.items()
+        ]
 
-    return query
+    # Use the native query() method
+    result = model.query(
+        dimensions=selected_dims if selected_dims else None,
+        measures=selected_measures if selected_measures else None,
+        limit=query_request.limit,
+        order_by=order_by,
+    )
+
+    return result

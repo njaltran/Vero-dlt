@@ -1,11 +1,14 @@
 """Star schema relationship definitions for the Contoso retail dataset.
 
+Column names use dlt's snake_case normalization:
+  CustomerKey → customer_key, StoreKey → store_key, etc.
+
 Schema:
     fact_sales (central fact table)
-    ├── dim_customer (via customerkey)
-    ├── dim_store (via storekey)
-    ├── dim_product (via productkey)
-    └── dim_date (via orderdate → date)
+    ├── dim_customer (via customer_key)
+    ├── dim_store (via store_key)
+    ├── dim_product (via product_key)
+    └── dim_date (via order_date → date)
 """
 
 
@@ -14,22 +17,22 @@ def get_semantic_table_references():
         "fact_sales": [
             {
                 "referenced_table": "dim_customer",
-                "columns": ["customerkey"],
-                "referenced_columns": ["customerkey"],
+                "columns": ["customer_key"],
+                "referenced_columns": ["customer_key"],
             },
             {
                 "referenced_table": "dim_store",
-                "columns": ["storekey"],
-                "referenced_columns": ["storekey"],
+                "columns": ["store_key"],
+                "referenced_columns": ["store_key"],
             },
             {
                 "referenced_table": "dim_product",
-                "columns": ["productkey"],
-                "referenced_columns": ["productkey"],
+                "columns": ["product_key"],
+                "referenced_columns": ["product_key"],
             },
             {
                 "referenced_table": "dim_date",
-                "columns": ["orderdate"],
+                "columns": ["order_date"],
                 "referenced_columns": ["date"],
             },
         ],

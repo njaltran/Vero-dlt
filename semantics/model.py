@@ -2,6 +2,10 @@
 
 Translates the Cube.js semantic definitions (sales, customers, products, stores, dates)
 into BSL (Boring Semantic Layer) using Ibis expressions.
+
+Note: dlt's snake_case normalizer converts PascalCase CSV column names:
+  OrderKey → order_key, UnitPrice → unit_price, CountryName → country_name, etc.
+All column references below use the normalized snake_case names.
 """
 
 from constants import PIPELINE_NAME
@@ -62,7 +66,7 @@ def _recursive_semantic_join(
             reference["referenced_columns"],
         )
 
-        semantic_model = semantic_model.join(
+        semantic_model = semantic_model.join_one(
             semantic_model_base[referenced_table],
             on=on_clause,
             how="left",
@@ -79,24 +83,25 @@ def _recursive_semantic_join(
 
 
 # -- Dimension and measure definitions per table --
-# These translate the Cube.js model definitions to BSL.
+# Column names use dlt's snake_case normalization of the PascalCase CSV headers.
+# Prefixed with {table_name}__ for join uniqueness.
 
 SEMANTIC_DEFINITIONS = {
     "fact_sales": {
         "dimensions": {
-            "orderdate": lambda t: t.fact_sales__orderdate,
-            "deliverydate": lambda t: t.fact_sales__deliverydate,
-            "currencycode": lambda t: t.fact_sales__currencycode,
-            "exchangerate": lambda t: t.fact_sales__exchangerate,
+            "orderdate": lambda t: t.fact_sales__order_date,
+            "deliverydate": lambda t: t.fact_sales__delivery_date,
+            "currencycode": lambda t: t.fact_sales__currency_code,
+            "exchangerate": lambda t: t.fact_sales__exchange_rate,
         },
         "measures": {
-            "totalRevenue": lambda t: (t.fact_sales__unitprice * t.fact_sales__quantity).sum(),
-            "netRevenue": lambda t: t.fact_sales__netprice.sum(),
+            "totalRevenue": lambda t: (t.fact_sales__unit_price * t.fact_sales__quantity).sum(),
+            "netRevenue": lambda t: t.fact_sales__net_price.sum(),
             "totalUnitsSold": lambda t: t.fact_sales__quantity.sum(),
-            "totalCost": lambda t: (t.fact_sales__unitcost * t.fact_sales__quantity).sum(),
-            "orderCount": lambda t: t.fact_sales__orderkey.nunique(),
-            "averageOrderValue": lambda t: t.fact_sales__netprice.mean(),
-            "profit": lambda t: (t.fact_sales__netprice - t.fact_sales__unitcost * t.fact_sales__quantity).sum(),
+            "totalCost": lambda t: (t.fact_sales__unit_cost * t.fact_sales__quantity).sum(),
+            "orderCount": lambda t: t.fact_sales__order_key.nunique(),
+            "averageOrderValue": lambda t: t.fact_sales__net_price.mean(),
+            "profit": lambda t: (t.fact_sales__net_price - t.fact_sales__unit_cost * t.fact_sales__quantity).sum(),
         },
     },
     "dim_customer": {
@@ -104,7 +109,7 @@ SEMANTIC_DEFINITIONS = {
             "surname": lambda t: t.dim_customer__surname,
             "gender": lambda t: t.dim_customer__gender,
             "continent": lambda t: t.dim_customer__continent,
-            "country": lambda t: t.dim_customer__countryfull,
+            "country": lambda t: t.dim_customer__country_full,
             "city": lambda t: t.dim_customer__city,
             "state": lambda t: t.dim_customer__state,
             "company": lambda t: t.dim_customer__company,
@@ -114,40 +119,40 @@ SEMANTIC_DEFINITIONS = {
             "occupation": lambda t: t.dim_customer__occupation,
         },
         "measures": {
-            "customerCount": lambda t: t.dim_customer__customerkey.nunique(),
+            "customerCount": lambda t: t.dim_customer__customer_key.nunique(),
             "avgCustomerAge": lambda t: t.dim_customer__age.mean(),
         },
     },
     "dim_product": {
         "dimensions": {
-            "productname": lambda t: t.dim_product__productname,
+            "productname": lambda t: t.dim_product__product_name,
             "manufacturer": lambda t: t.dim_product__manufacturer,
             "brand": lambda t: t.dim_product__brand,
             "color": lambda t: t.dim_product__color,
             "weight": lambda t: t.dim_product__weight,
             "cost": lambda t: t.dim_product__cost,
             "price": lambda t: t.dim_product__price,
-            "categoryname": lambda t: t.dim_product__categoryname,
-            "subcategoryname": lambda t: t.dim_product__subcategoryname,
+            "categoryname": lambda t: t.dim_product__category_name,
+            "subcategoryname": lambda t: t.dim_product__sub_category_name,
         },
         "measures": {
-            "productCount": lambda t: t.dim_product__productkey.nunique(),
+            "productCount": lambda t: t.dim_product__product_key.nunique(),
         },
     },
     "dim_store": {
         "dimensions": {
-            "storecode": lambda t: t.dim_store__storecode,
-            "countrycode": lambda t: t.dim_store__countrycode,
-            "countryname": lambda t: t.dim_store__countryname,
+            "storecode": lambda t: t.dim_store__store_code,
+            "countrycode": lambda t: t.dim_store__country_code,
+            "countryname": lambda t: t.dim_store__country_name,
             "store_state": lambda t: t.dim_store__state,
-            "opendate": lambda t: t.dim_store__opendate,
-            "closedate": lambda t: t.dim_store__closedate,
-            "squaremeters": lambda t: t.dim_store__squaremeters,
+            "opendate": lambda t: t.dim_store__open_date,
+            "closedate": lambda t: t.dim_store__close_date,
+            "squaremeters": lambda t: t.dim_store__square_meters,
             "status": lambda t: t.dim_store__status,
         },
         "measures": {
-            "storeCount": lambda t: t.dim_store__storekey.nunique(),
-            "averageStoreSize": lambda t: t.dim_store__squaremeters.mean(),
+            "storeCount": lambda t: t.dim_store__store_key.nunique(),
+            "averageStoreSize": lambda t: t.dim_store__square_meters.mean(),
         },
     },
     "dim_date": {
@@ -155,10 +160,10 @@ SEMANTIC_DEFINITIONS = {
             "date": lambda t: t.dim_date__date,
             "year": lambda t: t.dim_date__year,
             "quarter": lambda t: t.dim_date__quarter,
-            "yearmonth": lambda t: t.dim_date__yearmonth,
+            "yearmonth": lambda t: t.dim_date__year_month,
             "month": lambda t: t.dim_date__month,
-            "dayofweek": lambda t: t.dim_date__dayofweek,
-            "workingday": lambda t: t.dim_date__workingday,
+            "dayofweek": lambda t: t.dim_date__dayof_week,
+            "workingday": lambda t: t.dim_date__working_day,
         },
         "measures": {},
     },
