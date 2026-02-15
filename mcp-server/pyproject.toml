@@ -1,15 +1,16 @@
 [project]
-name = "mcp_cube_server"
-version = "0.0.2"
-description = "MCP server for interfacing with Cube.dev REST API"
+name = "mcp_bsl_server"
+version = "0.1.0"
+description = "MCP server for querying data via BSL (Boring Semantic Layer)"
 requires-python = ">=3.11"
 dependencies = [
     "mcp>=1.2.1",
     "pandas",
-    "pyjwt>=2.10.1",
     "python-dotenv",
     "pyyaml>=6.0.2",
-    "requests>=2.32.3",
+    "dlt[duckdb]>=1.0.0",
+    "boring-semantic-layer>=0.2.0",
+    "ibis-framework[duckdb]",
 ]
 
 [build-system]
@@ -20,7 +21,7 @@ build-backend = "hatchling.build"
 dev-dependencies = ["pyright>=1.1.389"]
 
 [project.scripts]
-mcp_cube_server = "mcp_cube_server:main"
+mcp_bsl_server = "mcp_bsl_server:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/mcp_cube_server"]
+packages = ["src/mcp_bsl_server"]

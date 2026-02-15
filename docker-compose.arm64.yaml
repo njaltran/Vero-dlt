@@ -1,33 +1,6 @@
 services:
   # ---------------------
-  # Cube.js (Semantic Layer / Analytical Backend)
-  # ---------------------
-  cubejs:
-    image: cubejs/cube:latest # Official Cube.js image
-    container_name: cubejs # Explicit container name for easier referencing
-    env_file:
-      - ${CUBEJS_ENV_FILE} # Contains DB name, user, and password for Cube.js
-    build:
-      context: ./cubejs # Optional: build Cube.js from local Dockerfile (custom setup)
-    networks:
-      - vero # Shared network for inter-service communication
-    ports:
-      - "15432:15432" # Cube SQL API using PostgreSQL wire protocol
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://cubejs:4000/readyz"] # Healthcheck for Cube.js
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    volumes:
-      - ./cubejs/model:/cube/conf/model:rw # Mount data models (schemas)
-      - ./cubejs/views:/cube/conf/model/views:rw # Mount view definitions
-    depends_on:
-      data-warehouse: # Cube.js requires the PostgreSQL data warehouse to be running first
-        condition: service_healthy # cubejs will only start once data-warehouse is healthy
-
-  # ---------------------
-  # PostgreSQL (Data Warehouse for Cube.js)
+  # PostgreSQL (Data Warehouse)
   # ---------------------
   data-warehouse:
     image: postgres:16 # Official PostgreSQL image
@@ -42,32 +15,31 @@ services:
       timeout: 5s
       retries: 5
     env_file:
-      - ${WAREHOUSE_ENV_FILE} # Contains DB name, user, and password for Cube.js
+      - ${WAREHOUSE_ENV_FILE} # Contains DB name, user, and password
     volumes:
       - data-warehouse-db-data:/var/lib/postgresql/data # Persistent storage for PostgreSQL data
 
   # ---------------------
-  # MCP Server (Custom AI Agent / API Middleware)
+  # MCP Server (BSL Semantic Layer / AI Middleware)
   # ---------------------
   mcp-server:
     container_name: mcp-server
     build:
       context: ./mcp-server # Custom backend build context
     depends_on:
-      cubejs:
-        condition: service_healthy # MCP will only start once Cube.js is healthy
+      data-warehouse:
+        condition: service_healthy # MCP will start once data-warehouse is healthy
     restart: on-failure # Auto-restart if the container crashes
     networks:
       - vero
     ports:
       - "9000:9000" # MCP Server API port for SSE and AI middleware
     env_file:
-      - ${MCP_ENV_FILE} # Dev environment config (includes secret tokens, etc.)
-    command: # Command-line args passed to the MCP process
-      - --endpoint
-      - ${MCP_ENDPOINT} # URL of the Cube.js backend
-      - --api_secret
-      - ${MCP_API_SECRET} # Secret used for authentication
+      - ${MCP_ENV_FILE} # Dev environment config
+    environment:
+      - PIPELINE_NAME=contoso
+    volumes:
+      - mcp-duckdb-data:/app/data # DuckDB data persistence
 
   # ---------------------
   # Metabase (BI Dashboard / Analytics Frontend)
@@ -172,7 +144,6 @@ services:
     ports:
       - "80:80" # Expose HTTP
       - "443:443" # Expose HTTPS
-      - "4000:4000" # Expose cubejs
       - "3000:3000" # Expose metabase
       - "5678:5678" # Expose n8n
     volumes:
@@ -185,8 +156,6 @@ services:
     networks:
       - vero # Shared network for inter-service communication
     depends_on:
-      cubejs: # requires the cubejs to be running first to mount the host
-        condition: service_healthy
       n8n: # requires the n8n to be running first to mount the host
         condition: service_healthy
 
@@ -234,7 +203,8 @@ services:
 volumes:
   metabase-db-data: # Volume for Metabase's PostgreSQL database
   metabase-data: # Volume for Metabase application state
-  data-warehouse-db-data: # Volume for Cube.js PostgreSQL database
+  data-warehouse-db-data: # Volume for PostgreSQL data warehouse
+  mcp-duckdb-data: # Volume for DuckDB semantic layer data
   n8n-data: # Volume for n8n instance
   n8n-db-data: # Volume for n8n's PostgreSQL database
   qdrant_data: # Volume for gdrant vector database
